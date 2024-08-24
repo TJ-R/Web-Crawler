@@ -1,4 +1,4 @@
-import { crawlPage } from './crawl.js'
+import { crawlPage, fetchHTML } from './crawl.js'
 function main() {
     if (process.argv.length < 3) {
         console.log("Error baseUrl needs to provided")
