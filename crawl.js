@@ -29,10 +29,8 @@ function getUrlsFromHTML(htmlBody, baseURL) {
     return fullPaths
 }
 
-async function crawlPage(baseUrl, currentUrl = baseUrl, pages = {links: [], count: 0}) {
-
-    console.log(`Crawling ${currentUrl}`);
-
+async function crawlPage(baseUrl, currentUrl = baseUrl, pages = {}) {
+    
     // Not on the same route as our base url skip and return 
     if (!currentUrl.includes(baseUrl)) {
         return pages;
@@ -41,39 +39,33 @@ async function crawlPage(baseUrl, currentUrl = baseUrl, pages = {links: [], coun
     let normalCurrentUrl = normalizeUrl(currentUrl);
 
     // Check links to see if we have already crawled our current page
-    if (pages.links.includes(normalCurrentUrl)) {
-            pages.count += 1;
-            return pages;   
+    if (pages[normalCurrentUrl]) {
+        pages[normalCurrentUrl] += 1;
+        return pages;   
+    } else {
+
+        // Has not already been crawled so crawl it now and add it to list
+        pages[normalCurrentUrl] = 1;
+
+        console.log(`Crawling ${currentUrl}`);
+
+        let html;
+        html = await fetchHTML(currentUrl);
+
+        let urls = getUrlsFromHTML(html, currentUrl);
+
+        // Crawl all of the links that we found on the current page;
+        for (const url of urls) {
+            pages = await crawlPage(baseUrl, url, pages);
+        }
+
+        return pages;
     }
-
-    // Has not already been crawled so crawl it now and add it to list
-    pages.links.push(normalCurrentUrl);
-    pages.count = 1;
-
-    let html;
-    html = await fetchHTML(currentUrl)
-
-    let urls = getUrlsFromHTML(html, currentUrl)
-
-    // Crawl all of the links that we found on the current page;
-    
-    // TODO NEED TO FIX LOGIC SO WE AGGREGATE A COUNT AND PAGES FROM ALL OF THE RECURSIVE CALLS
-    // AND INSURE THAT THE COUNT IS CORRECT WITH THE AMOUNT OF PAGES
-    for (const url of urls) {
-        let new_pages = await crawlPage(baseUrl, url, pages);
-        pages.links.push(...new_pages.links)
-        pages.count += new_pages.count;
-    }
-
-    console.log('Final Pages');
-    pages.links.forEach(link => console.log(link));
-    console.log(pages.count)
-    return pages;
 }
 
 async function fetchHTML(currentUrl) {
     let resp;
-    console.log(`Fetching ${currentUrl}`);
+    console.log(`\nFetching ${currentUrl}`);
 
     try {
         resp = await fetch(currentUrl)
@@ -91,7 +83,9 @@ async function fetchHTML(currentUrl) {
         return;
     }
 
-    return await resp.text()
+    let html = await resp.text();
+
+    return html;
 }
 
 export { normalizeUrl, getUrlsFromHTML, crawlPage, fetchHTML }
